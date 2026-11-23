@@ -70,3 +70,6 @@ baguette
 knight helmet
 marmoset
 zeppelin
+rope coil
+stretcher
+pasta maker

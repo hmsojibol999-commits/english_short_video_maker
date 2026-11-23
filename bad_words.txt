@@ -39,3 +39,4 @@ puppet
 x ray
 magnifier
 kaftan
+stollen
