@@ -30,20 +30,12 @@ GROQ_CHAT = "https://api.groq.com/openai/v1/chat/completions"
 DEFAULT_MODEL = "qwen/qwen3.6-27b"
 
 PROMPT = (
-    'A kids/learners vocabulary video asks "What\'s this called?" and the correct '
-    'answer is: "{word}".\n'
-    "Look at the photo and decide whether a viewer would name its MAIN subject "
-    '"{word}".\n'
-    "Answer \"yes\" only if ALL are true:\n"
-    "1. the main, most prominent object is a {word} (the whole object, not just a "
-    "part of something else);\n"
-    "2. it is the most natural everyday name for that object;\n"
-    "3. no other object in the photo would be an equally good answer.\n"
-    "A person wearing, holding or using the {word} is fine when the {word} is clearly "
-    'the focus of the photo (for example a coat, hat or tool on a person).\n'
-    'Answer "no" if the photo mainly shows something else, a part of the object, '
-    "a drawing/logo, only text, a product box or gift set, or if a readable brand "
-    "name is the most prominent thing, or if the photo has wide black bars.\n"
+    'A short English-learning video teaches this target: "{word}".\n'
+    "Inspect the photo and decide whether it clearly illustrates that target.\n"
+    "For a physical object, the main subject must be the correct whole object, not merely a part.\n"
+    "For a person-action or real-life scenario, the photo must visibly show the described action or situation; a person merely standing near the object is not enough.\n"
+    "Answer \"yes\" only when the main subject/action is a clear and natural match and no different subject would be an equally good answer.\n"
+    "Answer \"no\" if it mainly shows something unrelated, a drawing/logo, only text, or a product box.\n"
     'Answer "unsure" if you cannot tell.\n'
     'Reply ONLY with JSON: {{"verdict":"yes|no|unsure","main_subject":"<2-4 words>"}}'
 )
@@ -260,14 +252,17 @@ def filter_photos(word: str, photos: list, keep: int, model: str | None = None,
 
 
 LOCATE_PROMPT = (
-    'A vocabulary video shows this photo and asks "What\'s this called?". The answer is "{word}".\n'
-    "Decide whether a viewer needs an arrow pointing at the {word}.\n"
-    '- "arrow": false when the {word} is the one obvious main subject and fills much of the '
-    "photo, so anyone would name it without help.\n"
-    '- "arrow": true when the photo shows many things, or the {word} is small, only one part of a '
-    "scene, a part of a bigger object, or not in the middle.\n"
-    '"x" and "y" = the centre of the {word} as a fraction of the photo width and height '
-    "(0,0 is the top-left corner, 1,1 the bottom-right).\n"
+    'An English-learning video teaches this target: "{word}".\n'
+    "Decide whether a viewer needs an arrow to identify the important visual target.\n"
+    "For an object, point to the whole object. For an action, point to the person clearly "
+    "performing that action; when relevant, include the object they are acting on. "
+    "For a real-life phrase or situation, point to the people or item that best explains the scene.\n"
+    '- "arrow": false when the important target is already the one obvious main subject and '
+    "fills much of the photo.\n"
+    '- "arrow": true when the photo shows many things, or the important target is small, '
+    "off-centre, or difficult to identify without help.\n"
+    '"x" and "y" = the centre of the important target as a fraction of photo width and height '
+    "(0,0 is top-left, 1,1 bottom-right).\n"
     'Reply ONLY with JSON: {{"arrow": true|false, "x": 0.0-1.0, "y": 0.0-1.0}}'
 )
 

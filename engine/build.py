@@ -35,11 +35,19 @@ from .pixabay import USER_AGENT, Pixabay
 from .selection import SID_RE, Selection, parse_selection
 from .state import State
 from .timeline import WordAudio, build_timeline
+from .words import normalize
 
-HOOK_TEXT = "Can you name these?"
+HOOK_TEXT = "Can you answer these?"
 QUESTION_TEXT = "What is this called?"
 OUTRO_TEXT = "How many did you know? Comment below!"
-STATIC_TEXTS = {HOOK_TEXT, QUESTION_TEXT, OUTRO_TEXT, "What's this called?"}
+STATIC_TEXTS = {HOOK_TEXT, QUESTION_TEXT, "What is the person doing?", OUTRO_TEXT,
+                "What's this called?"}
+MODE_TITLES = {
+    "object": "WHAT’S THIS CALLED?",
+    "action": "WHAT IS THE PERSON DOING?",
+    "vocabulary": "WHAT DOES IT MEAN?",
+    "phrases": "HOW CAN YOU SAY IT?",
+}
 
 
 def outro_text(settings) -> str:
@@ -82,13 +90,16 @@ def collect_images(sel: Selection, cand: dict | None, state: State | None, workd
                    mock: bool) -> tuple:
     """Return (list[R.WordRes], image_infos, credits list)."""
     by_id = {}
+    by_word = {}
     if cand:
-        for w in cand.get("words", []):
-            for p in w.get("photos", []):
+        for item in cand.get("words", []):
+            by_word[normalize(item.get("word", ""))] = item
+            for p in item.get("photos", []):
                 by_id[p["id"]] = p
     words, infos, credits = [], [], []
     for i, pick in enumerate(sel.picks):
         raw = workdir / f"raw{i}.img"
+        item = by_word.get(normalize(pick.word), {})
         meta = None
         if pick.upload:
             if state is None:
@@ -112,7 +123,8 @@ def collect_images(sel: Selection, cand: dict | None, state: State | None, workd
                 except E.WCError as first:
                     # Pixabay image links expire after ~24 h: ask for fresh ones by id, retry once
                     try:
-                        fresh = Pixabay().by_id(pick.photo_id)
+                        cache_dir = state.p("pixabay-cache") if state is not None else None
+                        fresh = Pixabay(cache_dir=cache_dir).by_id(pick.photo_id)
                     except E.WCError:
                         fresh = None
                     if not fresh:
@@ -136,7 +148,17 @@ def collect_images(sel: Selection, cand: dict | None, state: State | None, workd
         infos.append(info)
         credits[-1]["resolution"] = f"{info['width']}x{info['height']}"
         credits[-1]["upscaled_flag"] = bool(info["upscaled"] or info["upscaled_at_zoom"])
-        words.append(R.WordRes(pick.word, str(workdir / f"work{i}.png"), pick.focus, pick.offset))
+        words.append(R.WordRes(
+            pick.word, str(workdir / f"work{i}.png"), pick.focus, pick.offset,
+            question=item.get("question") or QUESTION_TEXT,
+            answer_text=item.get("answer") or pick.word,
+            slow_text=item.get("slow_text") or pick.word,
+            label=item.get("label") or pick.word.title(),
+            subtitle=item.get("subtitle") or "",
+            spelling=item.get("spelling") or pick.word,
+            image_check=item.get("image_check") or pick.word,
+            mode=item.get("mode") or (cand or {}).get("mode", "object"),
+        ))
     return words, infos, credits
 
 
@@ -155,7 +177,7 @@ def vision_gate(sel: Selection, words: list, settings, credits: list, mock: bool
     for i, (pick, w) in enumerate(zip(sel.picks, words)):
         if pick.upload:
             continue
-        res = V.check_photo(pick.word, V.data_url_from_file(w.image_path),
+        res = V.check_photo(w.image_check or pick.word, V.data_url_from_file(w.image_path),
                             settings.vision_model)
         credits[i]["vision"] = res["verdict"]
         log(f"   vision {pick.word}: {res['verdict']} ({res.get('subject', '')})")
@@ -178,7 +200,7 @@ def auto_arrows(sel: Selection, words: list, settings, mock: bool) -> list:
     for pick, w in zip(sel.picks, words):
         if w.focus is not None:
             continue                                   # the user chose
-        res = V.locate_photo(pick.word, V.data_url_from_file(w.image_path))
+        res = V.locate_photo(w.image_check or pick.word, V.data_url_from_file(w.image_path))
         if res is None:
             log(f"   arrow {pick.word}: unknown, no arrow")
             continue
@@ -192,17 +214,21 @@ def auto_arrows(sel: Selection, words: list, settings, mock: bool) -> list:
 
 # -------------------------------------------------------------- voices
 def make_clips(engine: tts.VoiceEngine, words: list, outro: str = OUTRO_TEXT) -> tuple:
+    """Render each mode's own question, complete answer and target pronunciation."""
     clips = {"hook": engine.render(HOOK_TEXT, "question"),
              "outro": engine.render(outro, "question")}
     audios = []
-    q = engine.render(QUESTION_TEXT, "question")
+    sr = C.AUDIO_RATE
     for i, w in enumerate(words):
-        clips[f"q{i}"] = q
-        clips[f"a{i}"] = engine.render(w.word, "answer")
-        clips[f"s{i}"] = engine.render(w.word, "answer", slow=True)
-        sr = C.AUDIO_RATE
-        audios.append(WordAudio(len(q) / sr, len(clips[f"a{i}"]) / sr, len(clips[f"s{i}"]) / sr,
-                                sum(1 for c in w.word if c != " ")))
+        q_text = w.question or QUESTION_TEXT
+        answer_text = w.answer_text or w.word
+        slow_text = w.slow_text or w.spelling or w.word
+        spelling = w.spelling or w.word
+        clips[f"q{i}"] = engine.render(q_text, "question")
+        clips[f"a{i}"] = engine.render(answer_text, "answer")
+        clips[f"s{i}"] = engine.render(slow_text, "answer", slow=True)
+        audios.append(WordAudio(len(clips[f"q{i}"]) / sr, len(clips[f"a{i}"]) / sr,
+                                len(clips[f"s{i}"]) / sr, sum(1 for c in spelling if c != " ")))
     return clips, audios
 
 
@@ -312,6 +338,7 @@ def run_build(sel: Selection, settings, state: State | None, mock: bool, out_dir
         video = out_dir / "video.mp4"
         R.render_video(tl, words, theme, settings.channel_handle, str(wav), str(video),
                        workers=workers,
+                       title=MODE_TITLES.get((cand or {}).get("mode", "object"), MODE_TITLES["object"]),
                        progress=lambda i, n: log(f"   frame {i}/{n}"))
 
         log("5/6 quality gates + extras")
@@ -324,7 +351,8 @@ def run_build(sel: Selection, settings, state: State | None, mock: bool, out_dir
             {"generated": _now(), "photos_source": "Pixabay (https://pixabay.com)",
              "words": [p.word for p in sel.picks], "credits": credits,
              "voice_engines": engine.engines_used}, ensure_ascii=False, indent=1), encoding="utf-8")
-        checks = quality.check_video(video, len(sel.picks), [p.word for p in sel.picks], infos, tl.total)
+        checks = quality.check_video(video, len(sel.picks), [p.word for p in sel.picks], infos,
+                                      tl.total, mode=(cand or {}).get("mode", "object"))
         checks += quality.check_assets({"video.mp4": video, "cover.jpg": cover,
                                         "contact-sheet.jpg": sheet, "credits.json": credits_path})
         checks.append(quality.check_frame_not_blank(cover))
@@ -338,7 +366,10 @@ def run_build(sel: Selection, settings, state: State | None, mock: bool, out_dir
         notes.write_text(release_notes(tag, sel, theme, credits, engine, checks, mock)
                          + "".join(f"\nNOTE: {n}\n" for n in vision_notes), encoding="utf-8")
 
+        mode = (cand or {}).get("mode", "object")
+        level = (cand or {}).get("level", "")
         result = {"state": "done", "tag": tag, "words": [p.word for p in sel.picks],
+                  "mode": mode, "level": level,
                   "theme": theme["name"], "voices": engine.engines_used,
                   "seconds": round(time.time() - t0), "at": _now(),
                   "flagged": [c["word"] for c in credits if c.get("upscaled_flag")]}
@@ -349,9 +380,19 @@ def run_build(sel: Selection, settings, state: State | None, mock: bool, out_dir
             result["url"] = url
         # only now, after success, remember the words
         if state:
-            state.append_lines("used_words.txt", result["words"])
+            item_by_word = {normalize(x.get("word", "")): x for x in (cand or {}).get("words", [])}
+            item_ids = [item_by_word.get(normalize(p.word), {}).get("id") for p in sel.picks]
+            item_ids = [x for x in item_ids if x]
+            if item_ids:
+                state.append_lines(f"used_items/{mode}.txt", item_ids)
+            if mode == "object" or not item_ids:
+                # Keep compatibility with the pre-mode object bank and its history.
+                state.append_lines("used_words.txt", result["words"])
             if sel.skipped:
-                state.append_lines("bad_words.txt", sel.skipped)
+                if item_ids:
+                    state.append_lines(f"bad_items/{mode}.txt", sel.skipped)
+                else:
+                    state.append_lines("bad_words.txt", sel.skipped)
             ac = state.p("audio-cache")
             ac.mkdir(exist_ok=True)
             for text, path in engine.used_files:

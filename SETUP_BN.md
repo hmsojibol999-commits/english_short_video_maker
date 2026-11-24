@@ -114,8 +114,9 @@ Token শুধু আপনার ফোনের ব্রাউজারে �
    - হলুদ মানে চলবে, তবে কিছু বিকল্প ব্যবস্থায়  চলবে।
    - লাল মানে আগে ঠিক করতে হবে। কী করতে হবে নিচেই লেখা থাকে।
 2. **Settings → ভয়েস টেস্ট চালান।** Ava, Aria, Sonia, Andrew শুনে পছন্দেরটির নাম `config.yaml`-এর `edge_voice_question` ও `edge_voice_answer`-এ বসান।
-3. **Home → Prepare** চাপুন। ছবি বাছুন, জিনিসের ওপর ট্যাপ করুন।
-4. **Build** চাপুন। শেষে **ভিডিও ডাউনলোড করুন**।
+3. **Home** খুলে Learning Mode বেছে নিন: Object Learning, Action Learning, Useful Vocabulary বা Everyday Phrases। তারপর English level (Mixed/A1/A2/B1) বাছুন।
+4. ডিফল্টে Automatic mode চালু থাকে—Prepare শেষ হলে ছবির ranked candidate নিজে বেছে ভিডিও Build শুরু হবে। নিজে ছবি বাছতে চাইলে **Manual review** চালু করুন; তখন ছবি বেছে **Build** চাপুন।
+5. Build শেষ হলে **ভিডিও ডাউনলোড করুন** চাপুন।
 
 প্রথম ভিডিওর আগে ছোটখাটো সমস্যা হওয়া স্বাভাবিক। TROUBLESHOOTING_BN.md দেখুন।
 
@@ -134,8 +135,8 @@ Token শুধু আপনার ফোনের ব্রাউজারে �
 ## ভিডিও পোস্টের ক্যাপশন (কপি করে বসান)
 
 ```
-Can you name all 3? 🤔 Comment your score below! 👇
+Can you answer all 3? 🤔 Comment your score below! 👇
 Follow @Lingobits-Official for a new word every day! ✨
 
-#Lingobits #EnglishVocabulary #LearnEnglish #Vocabulary #WordOfTheDay #EnglishQuiz #NameThis #Shorts #Reels #FYP
+#Lingobits #EnglishVocabulary #LearnEnglish #Vocabulary #WordOfTheDay #EnglishQuiz #EnglishChallenge #Shorts #Reels #FYP
 ```

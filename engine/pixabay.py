@@ -18,6 +18,9 @@ import os
 import re
 import time
 import zlib
+import json
+import hashlib
+from pathlib import Path
 from urllib.parse import quote
 
 import requests
@@ -40,7 +43,10 @@ PERSON_WORDS = {
     "man", "men", "woman", "women", "girl", "boy", "person", "people", "child",
     "children", "kid", "kids", "couple", "portrait", "model", "lady", "guy",
     "baby", "family", "friends", "smiling", "wearing", "holding", "standing",
-    "sitting", "walking", "worker", "student", "chef", "farmer",
+    "sitting", "walking", "worker", "student", "chef", "farmer", "teacher",
+    "customer", "coworker", "coworkers", "colleague", "colleagues", "passenger",
+    "passengers", "shopkeeper", "cashier", "assistant", "waiter", "waitress",
+    "neighbor", "neighbour", "neighbors", "neighbours", "staff",
 }
 
 
@@ -60,7 +66,11 @@ def score_photo(photo: dict, word: str) -> float:
     wt = _tokens(w)
     if wt:
         score += 1.5 * sum(1 for t in wt if t in toks) / len(wt)
-    if toks & PERSON_WORDS:
+    # Only disable the person penalty when the requested target itself is a person/action.
+    # Checking the result tags here would let unrelated portraits evade the object penalty.
+    target_tokens = set(_tokens(w))
+    action_query = bool(target_tokens & PERSON_WORDS)
+    if toks & PERSON_WORDS and not action_query:
         score -= 2.0
     pw, ph = photo.get("width", 0), photo.get("height", 1)
     aspect = pw / max(ph, 1)
@@ -178,14 +188,60 @@ def filter_and_rank(photos: list, word: str, want: int = 4, exclude_ids=(),
 
 
 class Pixabay:
-    def __init__(self, key: str | None = None, mock: bool = False):
+    CACHE_TTL = 24 * 60 * 60
+
+    def __init__(self, key: str | None = None, mock: bool = False,
+                 cache_dir: str | Path | None = None):
         self.key = key if key is not None else os.environ.get("PIXABAY_API_KEY", "").strip()
         self.mock = mock
+        # Cache API search responses (metadata only) for the required 24 hours.
+        # In Actions this directory is inside the persistent state branch checkout.
+        self.cache_dir = Path(cache_dir) if cache_dir else None
+        if self.cache_dir is not None:
+            self.cache_dir.mkdir(parents=True, exist_ok=True)
 
     def _redact(self, text) -> str:
         """The key is part of the URL; never let it reach logs or status.json."""
         text = str(text)
         return text.replace(self.key, "***") if self.key else text
+
+    def _cache_file(self, params: dict) -> Path | None:
+        if self.cache_dir is None or self.mock:
+            return None
+        digest = hashlib.sha256(json.dumps(params, sort_keys=True).encode()).hexdigest()
+        return self.cache_dir / f"{digest}.json"
+
+    def _read_cache(self, params: dict) -> list | None:
+        cache_file = self._cache_file(params)
+        if cache_file is None:
+            return None
+        try:
+            if cache_file.is_file():
+                cached = json.loads(cache_file.read_text(encoding="utf-8"))
+                if isinstance(cached, dict) and isinstance(cached.get("hits"), list):
+                    cached_at = float(cached.get("cached_at", 0))
+                    if cached_at > 0 and 0 <= time.time() - cached_at < self.CACHE_TTL:
+                        return cached["hits"]
+                elif isinstance(cached, list):
+                    # Compatibility with cache files written by the first local build.
+                    if 0 <= time.time() - cache_file.stat().st_mtime < self.CACHE_TTL:
+                        return cached
+        except (OSError, ValueError, TypeError):
+            pass
+        return None
+
+    def _write_cache(self, params: dict, hits: list) -> None:
+        cache_file = self._cache_file(params)
+        if cache_file is None:
+            return
+        try:
+            tmp = cache_file.with_suffix(".part")
+            tmp.write_text(json.dumps({"cached_at": time.time(), "hits": hits},
+                                      ensure_ascii=False), encoding="utf-8")
+            tmp.replace(cache_file)
+        except OSError:
+            # Caching failure should not prevent an otherwise valid Prepare run.
+            pass
 
     def _request(self, params: dict) -> list:
         """One API call with retries; returns the raw `hits` list."""
@@ -226,13 +282,22 @@ class Pixabay:
         raise E.WCError(E.PIXABAY_RATE if rated else E.PIXABAY_EMPTY, last, "pixabay")
 
     def search_raw(self, query: str, page: int = 1, per_page: int = PER_PAGE) -> list:
-        """One page of search results as internal photo dicts (see _normalize)."""
+        """One page of search results as internal photo dicts (see _normalize).
+
+        Search responses are retained for at least 24 hours to respect Pixabay's
+        API caching requirement. Cached files contain metadata/URLs only, not images.
+        """
+        params = {"q": (query or "")[:100], "image_type": "photo",
+                  "safesearch": "true", "page": page,
+                  "per_page": max(3, min(per_page, 200))}
+        cached = self._read_cache(params)
+        if cached is not None:
+            return [p for p in (_normalize(h) for h in cached) if p]
         if self.mock:
             hits = _mock_results(query, page, per_page)
         else:
-            hits = self._request({"q": (query or "")[:100], "image_type": "photo",
-                                  "safesearch": "true", "page": page,
-                                  "per_page": max(3, min(per_page, 200))})
+            hits = self._request(params)
+            self._write_cache(params, hits)
         return [p for p in (_normalize(h) for h in hits) if p]
 
     def candidates(self, word: str, query: str, page: int = 1, want: int = 4,
@@ -259,7 +324,12 @@ class Pixabay:
         if self.mock:
             return None
         pid = int(photo_id)
-        for p in (_normalize(h) for h in self._request({"id": pid})):
+        params = {"id": pid}
+        hits = self._read_cache(params)
+        if hits is None:
+            hits = self._request(params)
+            self._write_cache(params, hits)
+        for p in (_normalize(h) for h in hits):
             if p and p["id"] == pid:
                 return _slim(p, "")
         return None

@@ -82,7 +82,8 @@ class TimelineTests(unittest.TestCase):
         self.assertEqual(keys, {"hook", "outro", "q0", "q1", "q2", "a0", "a1", "a2", "s0", "s1", "s2"})
         self.assertEqual(sum(1 for _, _, k in ev if k == "key"), 13 + 10 + 6)
         self.assertEqual(sum(1 for _, _, k in ev if k == "tick"), 9)      # 3-2-1 for each of 3 words
-        self.assertEqual(sum(1 for _, _, k in ev if k == "chime"), 3)
+        self.assertEqual(sum(1 for _, _, k in ev if k == "chime"), 0)
+        self.assertEqual(sum(1 for _, _, k in ev if k == "sparkle"), 0)
         self.assertTrue(all(0 <= t < tl.total for t, _, _ in ev))
 
     def test_easing_and_zoom(self):

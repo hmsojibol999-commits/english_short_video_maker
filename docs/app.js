@@ -111,14 +111,23 @@
     (notice.link ? ` <a href="${esc(notice.link)}" target="_blank" rel="noopener">লগ দেখুন</a>` : '') + `</div>`;
 
   /* ---------------- HOME ---------------- */
-  const CATS = ['kitchen', 'tools', 'garden', 'office', 'bathroom', 'clothing', 'furniture', 'toys', 'sports', 'vehicles', 'food', 'electronics'];
-  const CAT_BN = { kitchen: 'রান্নাঘর', tools: 'যন্ত্রপাতি', garden: 'বাগান', office: 'অফিস', bathroom: 'বাথরুম', clothing: 'পোশাক', furniture: 'আসবাব', toys: 'খেলনা', sports: 'খেলাধুলা', vehicles: 'যানবাহন', food: 'খাবার', electronics: 'ইলেকট্রনিক্স' };
+  // Only offer Object topics that currently contain at least three items at the selected level.
+  // This prevents an apparently valid topic/level combination from producing an empty bank.
+  const CATS_BY_LEVEL = {
+    mixed: ['animals', 'birds', 'clothing', 'food', 'health', 'home', 'household', 'kitchen', 'office', 'personal', 'school', 'science', 'tools', 'travel', 'vehicles'],
+    A1: ['animals', 'clothing', 'food', 'home', 'kitchen', 'personal', 'school', 'travel', 'vehicles'],
+    A2: ['animals', 'birds', 'food', 'health', 'home', 'household', 'kitchen', 'office', 'personal', 'school', 'tools', 'travel', 'vehicles'],
+    B1: ['home', 'office', 'science', 'tools', 'travel'],
+  };
+  const CATS = CATS_BY_LEVEL.mixed;
+  const CAT_BN = { kitchen: 'রান্নাঘর', tools: 'যন্ত্রপাতি', office: 'অফিস', clothing: 'পোশাক', vehicles: 'যানবাহন', food: 'খাবার', home: 'বাসা', school: 'স্কুল', personal: 'ব্যক্তিগত জিনিস', travel: 'যাতায়াত', health: 'স্বাস্থ্য', animals: 'প্রাণী', birds: 'পাখি', science: 'বিজ্ঞান', buildings: 'ভবন ও স্থাপত্য', music: 'বাদ্যযন্ত্র', outdoors: 'বাইরের জিনিস', household: 'গৃহস্থালি', objects: 'অন্যান্য বস্তু', nature: 'প্রকৃতি', games: 'খেলাধুলা ও খেলা', actions: 'কাজ/Action', useful_words: 'প্রয়োজনীয় শব্দ', daily_communication: 'দৈনন্দিন কথাবার্তা' };
+  const MODE_BN = { object: 'বস্তু চেনা (Object Learning)', action: 'কাজ শেখা (Action Learning)', vocabulary: 'প্রয়োজনীয় শব্দ (Useful Vocabulary)', phrases: 'দৈনন্দিন বাক্য (Everyday Phrases)' };
   const STATUS_CHIP = { preparing: ['চলছে', 'run'], ready: ['প্রস্তুত', ''], building: ['Build চলছে', 'run'], done: ['ভিডিও তৈরি', 'ok'], error: ['ত্রুটি', 'bad'] };
   function sessionTitle(s) {
     const m = /^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})/.exec(s.id);
     if (!m) return s.id;
     const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]));
-    return d.toLocaleString('bn-BD', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) + (s.category ? ' · ' + (CAT_BN[s.category] || s.category) : '');
+    return d.toLocaleString('bn-BD', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) + (s.mode ? ' · ' + (MODE_BN[s.mode] || s.mode) : '') + (s.category ? ' · ' + (CAT_BN[s.category] || s.category) : '');
   }
   function viewHome() {
     const noTok = !cfg.token || !cfg.repo;
@@ -128,11 +137,16 @@
        <div class="row" style="margin-top:10px"><a class="btn primary" href="#settings">Settings খুলুন</a></div></div>` : ''}
     <section class="card">
       <h2>নতুন ভিডিও</h2>
-      <p class="muted">৩টি শব্দ আর প্রতিটির ৪টি ছবি আনা হবে। প্রায় ১ মিনিট লাগে।</p>
-      <label class="field" for="cat">ক্যাটাগরি (ঐচ্ছিক)</label>
-      <select id="cat"><option value="">যেকোনো</option>${CATS.map((c) => `<option value="${c}">${CAT_BN[c]} (${c})</option>`).join('')}</select>
-      <div style="height:14px"></div>
-      <button class="btn primary big" data-act="prepare" ${busy || noTok ? 'disabled' : ''}>Prepare</button>
+      <p class="muted">একটি learning mode বেছে নিন। ডিফল্টে app নিজেই শব্দ, যাচাইকৃত ছবি ও ভিডিও তৈরি করবে।</p>
+      <label class="field" for="mode">Learning mode</label>
+      <select id="mode">${Object.keys(MODE_BN).map((m) => `<option value="${m}">${MODE_BN[m]}</option>`).join('')}</select>
+      <label class="field" for="level">English level</label>
+      <select id="level"><option value="mixed">Mixed (A1–B1)</option><option value="A1">A1 · Beginner</option><option value="A2">A2 · Elementary</option><option value="B1">B1 · Intermediate</option></select>
+      <label class="field" for="cat">Object topic (optional)</label>
+      <select id="cat"><option value="">সব Object topic</option>${CATS.map((c) => `<option value="${c}">${CAT_BN[c] || c}</option>`).join('')}</select>
+      <label class="row" style="align-items:center;gap:8px;margin-top:12px"><input id="manual" type="checkbox"> <span>Manual review (নিজে ছবি বেছে নেব)</span></label>
+      <p class="muted">Manual review বন্ধ থাকলে প্রথমে ভালো match পাওয়া ছবি automatic নির্বাচন হবে। চাইলে পরে review mode ব্যবহার করতে পারবেন।</p>
+      <button class="btn primary big" data-act="prepare" ${busy || noTok ? 'disabled' : ''}>ভিডিও তৈরি করুন</button>
     </section>
     <section class="card">
       <h2>আগের session</h2>
@@ -169,19 +183,42 @@
     return done;
   }
 
+  async function buildAutomatically(sid, cand) {
+    const count = Number(cand.words_per_video || 3);
+    const chosen = (cand.words || []).filter((w) => w.photos && w.photos.length).slice(0, count);
+    if (chosen.length !== count) throw Object.assign(new Error('not-enough-auto-photos'), { handled: true,
+      err: { kind: 'bad', title: 'Automatic image selection অসম্পূর্ণ।', text: 'কিছু শব্দের জন্য যথেষ্ট ছবি পাওয়া যায়নি। Manual review চালু করে আবার চেষ্টা করুন।' } });
+    const words = chosen.map((w) => ({ word: w.word, pick: { photoId: w.photos[0].id, focus: null, offset: [0.5, 0.5] } }));
+    const selection = W.buildSelection({ sid, theme: cfg.theme, words });
+    if (selection.length > 60000) throw new Error('selection-too-large');
+    saveSession({ id: sid, status: 'building' });
+    const run = await runWorkflow('build.yml', { session_id: sid, selection }, sid, 'Automatic video build চলছে…');
+    const bj = await client().readStateJson(`sessions/${sid}/build.json`).catch(() => null);
+    if (run && run.conclusion === 'success' && bj && bj.state === 'done') {
+      saveSession({ id: sid, status: 'done', tag: bj.tag, mode: cand.mode, level: cand.level });
+      return;
+    }
+    const err = bj && bj.code ? errFromCode(bj.code, bj.detail, run && run.html_url) : errFromCode('unknown', '', run && run.html_url);
+    saveSession({ id: sid, status: 'error', error: err, mode: cand.mode, level: cand.level });
+  }
+
   async function doPrepare() {
     const c = needClient();
     if (!c || busy) return;
     const sid = W.newSessionId();
-    const category = ($('#cat') || {}).value || '';
-    saveSession({ id: sid, category, status: 'preparing' });
+    const mode = ($('#mode') || {}).value || 'object';
+    const level = ($('#level') || {}).value || 'mixed';
+    const category = mode === 'object' ? ((($('#cat') || {}).value) || '') : '';
+    const manual = !!($('#manual') || {}).checked;
+    saveSession({ id: sid, category, mode, level, manual, status: 'preparing' });
     notice = null;
     try {
-      const run = await runWorkflow('prepare.yml', { session_id: sid, category }, sid, 'শব্দ ও ছবি আনা হচ্ছে…');
-      await loadCandidates(sid, run);
+      const run = await runWorkflow('prepare.yml', { session_id: sid, category, mode, level }, sid, 'শব্দ ও ছবি আনা হচ্ছে…');
+      const cand = await loadCandidates(sid, run);
+      if (!manual) await buildAutomatically(sid, cand);
       location.hash = '#s/' + sid;
     } catch (e) {
-      saveSession({ id: sid, status: 'error' });
+      saveSession({ id: sid, status: 'error', mode, level });
       notice = e && e.handled ? e.err : errFromGH(e);
     } finally { clearBusy(); }
   }
@@ -256,10 +293,11 @@
     if (cur.build) html += viewBuild();
     const wn = (cur.cand.warnings || []).filter((x) => x && x.stage === 'groq');
     if (wn.length) html += `<div class="notice warn"><strong>AI শব্দ দিতে পারেনি, তাই আমাদের বাছাই করা তালিকা থেকে শব্দ এসেছে।</strong>কারণ: ${esc(wn[0].detail || wn[0].code)}</div>`;
-    if ((cur.cand.warnings || []).some((x) => x && x.code === 'bank_low')) html += `<div class="notice warn"><strong>শব্দ ভান্ডার প্রায় শেষ।</strong>আমাকে (Claude-কে) বলুন, নতুন শব্দ যোগ করে দেব। এখন AI নিজে শব্দ বাছছে।</div>`;
-    if ((cur.cand.warnings || []).some((x) => x && x.code === 'vision_unavailable')) html += `<div class="notice warn"><strong>ছবি যাচাই করা যায়নি।</strong>ছবি নিজে দেখে বাছুন।</div>`;
+    if ((cur.cand.warnings || []).some((x) => x && x.code === 'bank_low')) html += `<div class="notice warn"><strong>এই level-এর unused item কমে এসেছে।</strong>অন্য level বা learning mode বেছে নিন। ব্যবহৃত item আবার দেখানো হবে না।</div>`;
+    if ((cur.cand.warnings || []).some((x) => x && x.code === 'vision_unavailable')) html += `<div class="notice warn"><strong>ছবি AI দিয়ে যাচাই করা হয়নি।</strong>Automatic mode-এ ছবি নিজে দেখে যাচাই করুন। প্রয়োজন হলে Home থেকে Manual review চালু করে আবার Prepare করুন।</div>`;
     html += `<div class="card"><h2>${esc(sessionTitle(s))}</h2>
-      <p class="hint">১) ছবিতে ট্যাপ করে বাছুন। ২) তীর নিয়ে ভাবতে হবে না: না ট্যাপ করলে AI নিজেই ঠিক করবে তীর লাগবে কিনা ও কোথায়। চাইলে নিজে জিনিসটির ওপর ট্যাপ করলে সেটাই চলবে। ৩) চাইলে আঙুল টেনে ছবি সরান। (পাতা স্ক্রল করতে ছবির বাইরের ফাঁকা অংশে আঙুল রাখুন।)</p></div>`;
+      <p class="muted">${esc(MODE_BN[cur.cand.mode] || MODE_BN.object)} · ${esc(cur.cand.level || 'Mixed')}</p>
+      <p class="hint">১) ছবিতে ট্যাপ করে বাছুন। ২) তীর নিয়ে ভাবতে হবে না: না ট্যাপ করলে AI নিজেই ছবির গুরুত্বপূর্ণ অংশে তীর লাগবে কিনা ও কোথায় ঠিক করবে। চাইলে যে অংশটি দেখাতে চান সেখানে ট্যাপ করুন। ৩) চাইলে আঙুল টেনে ছবি সরান। (পাতা স্ক্রল করতে ছবির বাইরের ফাঁকা অংশে আঙুল রাখুন।)</p></div>`;
     cur.ui.active.forEach((ci, k) => { html += viewWord(ci, k); });
     const done = cur.ui.active.filter((ci) => !!pickOf(ci)).length;
     const n = cur.ui.active.length;
@@ -280,10 +318,11 @@
     const w = cur.cand.words[ci];
     const p = pickOf(ci);
     const editing = cur.ui.editing === ci || (!p);
-    const head = `<div class="word-head"><span class="no">${bn(k + 1)}</span><h3>${esc(w.word)}</h3><span class="chip">${esc(w.category || '')}</span>${p && p.focus && !editing ? '<span class="chip ok">ফোকাস ✓</span>' : ''}</div>`;   // no chip while editing: it could wrap and make the card jump under the finger
+    const head = `<div class="word-head"><span class="no">${bn(k + 1)}</span><h3>${esc(w.word)}</h3><span class="chip">${esc(w.level || w.category || '')}</span>${p && p.focus && !editing ? '<span class="chip ok">ফোকাস ✓</span>' : ''}</div>`;
+    const lesson = `<p class="hint">${w.question ? `<strong>Question:</strong> ${esc(w.question)} ` : ''}${w.answer ? `<strong>Answer:</strong> ${esc(w.answer)} ` : ''}${w.bengali_meaning ? `<br><strong>বাংলা:</strong> ${esc(w.bengali_meaning)}` : ''}${w.example ? `<br><strong>Example:</strong> ${esc(w.example)}` : ''}</p>`;   // no chip while editing: it could wrap and make the card jump under the finger
     if (p && !editing) {
       const t = thumbsFor(ci).find((x) => x.key === p.key);
-      return `<section class="word card">${head}<div class="row" style="align-items:center">
+      return `<section class="word card">${head}${lesson}<div class="row" style="align-items:center">
         <div style="width:90px;flex:none"><button class="thumb" style="width:90px" data-act="edit" data-ci="${ci}" aria-label="ছবি ঠিক করুন">${t ? `<img alt="" src="${esc(t.thumb)}" style="object-position:${p.offset[0] * 100}% ${p.offset[1] * 100}%">` : ''}</button></div>
         <button class="btn" data-act="edit" data-ci="${ci}">ছবি বা ফোকাস বদলান</button></div></section>`;
     }
@@ -294,7 +333,7 @@
     }
     const grid = thumbsFor(ci).map((t) => `<button class="thumb" data-act="pick" data-ci="${ci}" data-key="${esc(t.key)}" aria-pressed="${p && p.key === t.key}" aria-label="ছবি বাছুন">
         <img alt="" loading="lazy" src="${esc(t.thumb)}">${p && p.key === t.key ? '<span class="tick">✓</span>' : ''}${badgeFor(t)}</button>`).join('');
-        return `<section class="word card">${head}
+        return `<section class="word card">${head}${lesson}
       ${p ? '' : '<p class="hint">একটি ছবিতে ট্যাপ করুন।</p>'}${editor}
       <div class="grid">${grid}</div>
       <div class="row">
@@ -309,18 +348,21 @@
   function editorHtml(ci, p, t) {
     const [vx, vy] = W.imageToView(t.w, t.h, p.offset, p.focus ? p.focus[0] : 0.5, p.focus ? p.focus[1] : 0.5);
     const shown = p.focus && vx >= 0 && vx <= 1 && vy >= 0 && vy <= 1;
+    const item = cur.cand.words[ci];
+    const previewTitle = ({ object: "WHAT’S THIS CALLED?", action: "WHAT IS THE PERSON DOING?",
+      vocabulary: "WHAT DOES IT MEAN?", phrases: "HOW CAN YOU SAY IT?" })[cur.cand.mode] || "WHAT’S THIS CALLED?";
     return `<div class="phone" data-ci="${ci}">
-      <div class="p-title">WHAT’S THIS CALLED?</div>
-      <div class="p-card" data-editor="${ci}" role="img" aria-label="ছবির জিনিসটির ওপর ট্যাপ করুন">
+      <div class="p-title">${esc(previewTitle)}</div>
+      <div class="p-card" data-editor="${ci}" role="img" aria-label="ছবির গুরুত্বপূর্ণ অংশে ট্যাপ করুন">
         <img alt="" src="${esc(t.src)}" style="object-position:${p.offset[0] * 100}% ${p.offset[1] * 100}%">
         <div class="cross" style="left:${vx * 100}%;top:${vy * 100}%;display:${shown ? 'block' : 'none'}">
           <svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="13" fill="none" stroke="#fff" stroke-width="3"/><circle cx="22" cy="22" r="13" fill="none" stroke="#FF3B2F" stroke-width="1.5"/><path d="M22 2v12M22 30v12M2 22h12M30 22h12" stroke="#fff" stroke-width="3"/><path d="M22 2v12M22 30v12M2 22h12M30 22h12" stroke="#FF3B2F" stroke-width="1.5"/></svg>
         </div>
       </div>
-      <div class="p-ans">${esc(cur.cand.words[ci].word)}</div>
+      <div class="p-ans">${esc(item.label || item.word)}</div>
       <div class="p-safe"></div>
     </div>
-    <p class="focus-note">${p.focus ? 'ফোকাস ঠিক আছে ✓ আবার ট্যাপ করলে সরবে।' : '👆 তীর চাইলে জিনিসটির ওপর ট্যাপ করুন (ঐচ্ছিক)'}${p.focus ? ` <button class="btn small" data-act="clearfocus" data-ci="${ci}">তীর সরান</button>` : ''}</p>
+    <p class="focus-note">${p.focus ? 'ফোকাস ঠিক আছে ✓ আবার ট্যাপ করলে সরবে।' : '👆 তীর চাইলে যে অংশটি দেখাতে চান সেখানে ট্যাপ করুন (ঐচ্ছিক)'}${p.focus ? ` <button class="btn small" data-act="clearfocus" data-ci="${ci}">তীর সরান</button>` : ''}</p>
     ${W.needsUpscale(t.w, t.h, 1) ? '<p class="notice warn">এই ছবি কার্ডের চেয়ে ছোট। ভিডিওতে ঝাপসা দেখাতে পারে। আরেকটি ছবি বাছা ভালো।</p>' : ''}`;
   }
 
@@ -629,10 +671,28 @@
     };
     if (H[act]) { e.preventDefault(); Promise.resolve(H[act]()).then(() => render(true)); }
   });
+  function refreshObjectTopics() {
+    const cat = $('#cat'), level = $('#level');
+    if (!cat || !level) return;
+    const old = cat.value;
+    const topics = CATS_BY_LEVEL[level.value] || CATS_BY_LEVEL.mixed;
+    cat.innerHTML = '<option value="">সব Object topic</option>' + topics.map((c) =>
+      `<option value="${c}">${CAT_BN[c] || c}</option>`).join('');
+    cat.value = topics.includes(old) ? old : '';
+  }
+
   document.addEventListener('change', (e) => {
     const f = e.target.closest('[data-up]');
     if (f) { const file = f.files && f.files[0]; f.value = ''; uploadOwn(+f.dataset.up, file).then(() => render(true)); return; }
     if (e.target.id === 'theme') { store.set('wc.theme', e.target.value); }
+    if (e.target.id === 'level') refreshObjectTopics();
+    if ((e.target.id === 'mode' || e.target.id === 'level') && $('#cat')) {
+      if (e.target.id === 'mode') $('#cat').value = '';
+      const objectMode = ($('#mode') || {}).value === 'object';
+      $('#cat').disabled = !objectMode;
+      const catLabel = $('label[for="cat"]');
+      if (catLabel) catLabel.textContent = objectMode ? 'Object topic (optional)' : 'Topic (not used in this mode)';
+    }
   });
 
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {

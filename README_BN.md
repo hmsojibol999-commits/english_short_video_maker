@@ -1,27 +1,28 @@
 # WordClip Studio
 
-ইংরেজি শব্দের ছোট ভিডিও (৯:১৬, TikTok/Shorts/Reels-এর মাপে) প্রায় নিজে নিজে বানানোর টুল।
-প্রতিটি ভিডিওতে ৩টি শব্দ থাকে: ছবি, তীর, “What’s this called?” প্রশ্ন, ৩-২-১ কাউন্টডাউন, উত্তর, ধীরে উচ্চারণ আর বানান।
-ভিডিওর ভেতরে শুধু ইংরেজি থাকে।
+ইংরেজি শেখার ছোট ভিডিও (৯:১৬, TikTok/Shorts/Reels-এর মাপে) বানানোর টুল। চারটি আলাদা Learning Mode আছে:
 
-সব ভারী কাজ **GitHub Actions** করে। আপনার ফোন শুধু স্ক্রিন দেখায় আর ট্যাপ নেয়। কোনো সার্ভার চালু রাখতে হয় না, কোনো টাকা লাগে না।
+- **Object Learning:** “What is this called?” → “This is a bottle.”
+- **Action Learning:** “What is the person doing?” → “The person is opening a bottle.”
+- **Useful Vocabulary:** শব্দের অর্থ ও একটি example sentence।
+- **Everyday Phrases:** দৈনন্দিন পরিস্থিতিতে ব্যবহারযোগ্য English phrase।
 
-## আপনাকে শুধু এই ৩টি কাজ করতে হবে
+প্রতিটি ভিডিওতে ৩টি item থাকে। A1, A2, B1 বা Mixed level বেছে নেওয়া যায়। Level-গুলো শেখার সুবিধার জন্য আনুমানিক CEFR target; official exam word-list certification নয়। পুরোনো ১,৩০০-item photo list archive-এ আছে, কিন্তু কেবল বাছাই করা practical object-ই active bank-এ থাকে। সব ভারী কাজ **GitHub Actions** করে; ফোনে শুধু ওয়েব পাতা ব্যবহার করবেন।
 
-1. ওয়েব পাতা খুলে **Prepare** চাপুন।
-2. প্রায় ১ মিনিট পরে ৩টি শব্দ আর প্রতিটির ৪টি ছবি আসবে। প্রতিটি শব্দের জন্য:
-   - একটি ছবিতে ট্যাপ করে বাছুন।
-   - তারপর ছবির জিনিসটির ওপর ট্যাপ করুন। তীর আর জুম ঠিক ওইখানে যাবে।
-   - চাইলে আঙুল টেনে ছবির কাটাছাঁটা সরান।
-   - ছবি পছন্দ না হলে **আরও ছবি**, শব্দটা পছন্দ না হলে **বাদ দিন** (তার জায়গায় অতিরিক্ত শব্দ আসবে), অথবা **নিজের ছবি** দিন।
-3. **Build** চাপুন। ২–৫ মিনিট পরে **ভিডিও ডাউনলোড করুন** বোতাম আসবে (HD MP4)।
+## ভিডিও বানানোর নিয়ম
+
+1. Home-এ Learning Mode এবং English level বেছে নিন। Object Learning হলে চাইলে topic-ও বাছতে পারবেন।
+2. ডিফল্টে **Manual review বন্ধ** থাকে। সে অবস্থায় Prepare শব্দ ও Pixabay ছবি সংগ্রহ করে, প্রথম ranked ছবি নিজে বেছে নিয়ে Build শুরু করে। শেষ হলে ভিডিও ডাউনলোডের লিংক আসবে।
+3. নিজে ছবি বাছতে চাইলে **Manual review** চালু করুন। তখন আগের মতো প্রতিটি শব্দের ছবির candidate দেখাবে; ছবি পছন্দ করে Build চাপবেন।
+
+কোনো mode-এর item সফলভাবে ভিডিওতে ব্যবহৃত হলে সেই mode-এর history-তে ID যোগ হয়; ওই mode-এ item আবার আসবে না। আলাদা mode-এর history আলাদা। Build ব্যর্থ হলে item ব্যবহৃত হিসেবে ধরা হয় না।
 
 ## শুরুর আগে যা লাগবে (সব বিনামূল্যে)
 
 | জিনিস | কোথায় পাবেন |
 |---|---|
 | GitHub অ্যাকাউন্ট | github.com |
-| Cloudflare token + Account ID | dash.cloudflare.com (AI: শব্দ ও ছবি যাচাই) |
+| Cloudflare token + Account ID | dash.cloudflare.com (AI: ছবির মিল যাচাই ও arrow placement) |
 | Pixabay API key | pixabay.com/api/docs/ (ছবির জন্য) |
 
 Key-গুলো **কখনো চ্যাটে বা কোডে বসাবেন না।** শুধু GitHub-এর Secrets-এ বসবে (SETUP_BN.md-এ দেখানো আছে)।
@@ -59,8 +60,8 @@ Key-গুলো **কখনো চ্যাটে বা কোডে বসা
 ## পোস্টের ক্যাপশন (কপি করুন)
 
 ```
-Can you name all 3? 🤔 Comment your score below! 👇
+Can you answer all 3? 🤔 Comment your score below! 👇
 Follow @Lingobits-Official for a new word every day! ✨
 
-#Lingobits #EnglishVocabulary #LearnEnglish #Vocabulary #WordOfTheDay #EnglishQuiz #NameThis #Shorts #Reels #FYP
+#Lingobits #EnglishVocabulary #LearnEnglish #Vocabulary #WordOfTheDay #EnglishQuiz #EnglishChallenge #Shorts #Reels #FYP
 ```

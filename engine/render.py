@@ -22,7 +22,7 @@ from .fonts import fit_size, get_font
 from .timeline import (HOOK_POP_STEP, HOOK_POP_T0, OUTRO_FOLLOW_T, Timeline, countdown_at,
                        ease_in_cubic, ease_out_back, ease_out_cubic, spring_scale, zoom_at)
 
-HOOK_LINES = ["Can you", "name these?"]
+HOOK_LINES = ["Can you", "answer these?"]
 OUTRO_LINES = ["How many", "did you know?"]
 OUTRO_SUB = "Comment below!"
 OUTRO_Y = {"how": 470, "sub": 790, "handle": 1095, "follow": 1270, "icons": 1440}   # centre lines (px)
@@ -36,6 +36,14 @@ class WordRes:
     image_path: str        # prepared image (see prep_image)
     focus: tuple | None    # None = no arrow
     offset: tuple
+    question: str = "What is this called?"
+    answer_text: str = ""
+    slow_text: str = ""
+    label: str = ""
+    subtitle: str = ""
+    spelling: str = ""
+    image_check: str = ""
+    mode: str = "object"
 
 
 # --------------------------------------------------------------- images
@@ -68,12 +76,13 @@ def prep_image(src: str | Path, dst: str | Path, max_side: int = 3000) -> dict:
 
 # ----------------------------------------------------------------- scene
 class Scene:
-    def __init__(self, tl: Timeline, words: list, theme: dict, handle: str):
+    def __init__(self, tl: Timeline, words: list, theme: dict, handle: str,
+                 title: str = "WHAT’S THIS CALLED?"):
         self.tl, self.theme, self.handle = tl, theme, handle
         self.words = words
         self.bg = D.build_background(theme)
         self.rays = D.Rays(theme)
-        self.title = D.build_title(theme)
+        self.title = D.build_title(theme, title)
         self.shadow = D.card_shadow()
         self.border = D.card_border()
         self.outer = D.rounded_mask((C.CARD_W, C.CARD_H), C.CARD_RADIUS)
@@ -87,8 +96,8 @@ class Scene:
             self.dims.append(im.size)
         n = len(words)
         self.pills = [D.build_pills(theme, i, n) for i in range(n)]
-        self.labels = [D.build_label(theme, w.word) for w in words]
-        self.tiles = [D.build_tiles(theme, w.word) for w in words]
+        self.labels = [D.build_label(theme, w.label or w.word, w.subtitle or None) for w in words]
+        self.tiles = [D.build_tiles(theme, w.spelling or w.word) for w in words]
         self.minis = [self._mini_card(i) for i in range(n)]
         self.hook_sprites = [self._big_text(t) for t in HOOK_LINES]
         self.outro_sprites = [self._big_text(t) for t in OUTRO_LINES]
@@ -378,9 +387,9 @@ class Scene:
 _SCENE: Scene | None = None
 
 
-def _init_worker(tl, words, theme, handle):
+def _init_worker(tl, words, theme, handle, title):
     global _SCENE
-    _SCENE = Scene(tl, words, theme, handle)
+    _SCENE = Scene(tl, words, theme, handle, title)
 
 
 def _render_index(i: int) -> bytes:
@@ -406,7 +415,7 @@ def encode_cmd(audio_wav: str, out_path: str, preset: str = C.PRESET, crf: int =
 def render_video(tl: Timeline, words: list, theme: dict, handle: str, audio_wav: str,
                  out_path: str, workers: int | None = None,
                  preset: str | None = None, crf: int | None = None,
-                 progress=None) -> None:
+                 progress=None, title: str = "WHAT’S THIS CALLED?") -> None:
     workers = workers or max(1, min(4, os.cpu_count() or 1))
     preset = preset or os.environ.get("WORDCLIP_PRESET", C.PRESET)
     crf = crf or int(os.environ.get("WORDCLIP_CRF", C.CRF))
@@ -415,7 +424,7 @@ def render_video(tl: Timeline, words: list, theme: dict, handle: str, audio_wav:
                             stdin=subprocess.PIPE, stderr=subprocess.PIPE)
     try:
         if workers == 1:
-            scene = Scene(tl, words, theme, handle)
+            scene = Scene(tl, words, theme, handle, title)
             for i in range(n):
                 proc.stdin.write(scene.frame(i).tobytes())
                 if progress and i % 60 == 0:
@@ -423,7 +432,7 @@ def render_video(tl: Timeline, words: list, theme: dict, handle: str, audio_wav:
         else:
             ctx = mp.get_context("fork")
             with ctx.Pool(workers, initializer=_init_worker,
-                          initargs=(tl, words, theme, handle)) as pool:
+                          initargs=(tl, words, theme, handle, title)) as pool:
                 for i, raw in enumerate(pool.imap(_render_index, range(n), chunksize=4)):
                     proc.stdin.write(raw)
                     if progress and i % 60 == 0:
@@ -442,9 +451,9 @@ def render_video(tl: Timeline, words: list, theme: dict, handle: str, audio_wav:
 
 
 def save_frames(tl: Timeline, words: list, theme: dict, handle: str, times: list,
-                out_dir: str) -> list:
+                out_dir: str, title: str = "WHAT’S THIS CALLED?") -> list:
     """Render specific timestamps to PNG (fast visual review)."""
-    scene = Scene(tl, words, theme, handle)
+    scene = Scene(tl, words, theme, handle, title)
     paths = []
     for t in times:
         i = min(tl.frames() - 1, max(0, int(round(t * C.FPS))))

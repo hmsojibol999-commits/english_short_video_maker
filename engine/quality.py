@@ -24,14 +24,17 @@ def _fps(stream: dict) -> float:
         return 0.0
 
 
-def duration_range(n_words: int) -> tuple:
+def duration_range(n_words: int, mode: str | None = None) -> tuple:
+    # Sentence-based lessons need more room than the original one-word Object format.
+    if n_words == 3 and mode not in (None, "", "object"):
+        return (20.0, 60.0)
     if n_words == 3:
         return C.DURATION_RANGE
     return (12.0, 60.0)       # custom word counts: relaxed range
 
 
 def check_video(path: str | Path, n_words: int, words: list, image_infos: list,
-                expected_total: float) -> list:
+                expected_total: float, mode: str | None = None) -> list:
     """Return the list of check results (see _ok)."""
     res = []
     info = media.probe(path)
@@ -49,7 +52,7 @@ def check_video(path: str | Path, n_words: int, words: list, image_infos: list,
     res.append(_ok("audio 48 kHz", str(a.get("sample_rate")) == str(C.AUDIO_RATE),
                    str(a.get("sample_rate"))))
     dur = float(info["format"]["duration"])
-    lo, hi = duration_range(n_words)
+    lo, hi = duration_range(n_words, mode)
     res.append(_ok("duration in range", lo <= dur <= hi, f"{dur:.2f}s (allowed {lo:.0f}-{hi:.0f}s)"))
     vd, ad = float(v.get("duration", dur)), float(a.get("duration", dur))
     res.append(_ok("audio/video length match <=50 ms", abs(vd - ad) <= 0.05,

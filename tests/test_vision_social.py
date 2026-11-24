@@ -327,6 +327,30 @@ class V5FixTests(unittest.TestCase):
 
 
 class AutoArrowTests(unittest.TestCase):
+    def test_action_arrow_uses_visual_action_description(self):
+        word = R.WordRes(
+            "twist a bottle cap", "mock.png", None, (0.5, 0.5),
+            image_check="a person twisting a bottle cap",
+        )
+        selection = Selection(
+            "sid-action-arrow-01", "auto",
+            [Pick("twist a bottle cap", 123, None, None, (0.5, 0.5))],
+        )
+        seen = []
+
+        def locate(target, image_url):
+            seen.append((target, image_url))
+            return True, (0.4, 0.6)
+
+        with mock.patch.object(B.llm, "available", return_value=True), \
+                mock.patch.object(B.V, "data_url_from_file", return_value="data:image/jpeg;base64,x"), \
+                mock.patch.object(B.V, "locate_photo", side_effect=locate):
+            notes = B.auto_arrows(selection, [word], C.Settings(), mock=False)
+
+        self.assertEqual(seen, [("a person twisting a bottle cap", "data:image/jpeg;base64,x")])
+        self.assertEqual(word.focus, (0.4, 0.6))
+        self.assertEqual(len(notes), 1)
+
     def test_parse_locate(self):
         self.assertEqual(V.parse_locate('{"arrow": true, "x": 0.4, "y": 0.6}'), (True, (0.4, 0.6)))
         self.assertEqual(V.parse_locate('{"arrow": false, "x": 0.5, "y": 0.5}')[0], False)
