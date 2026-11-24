@@ -294,7 +294,7 @@
     const wn = (cur.cand.warnings || []).filter((x) => x && x.stage === 'groq');
     if (wn.length) html += `<div class="notice warn"><strong>AI শব্দ দিতে পারেনি, তাই আমাদের বাছাই করা তালিকা থেকে শব্দ এসেছে।</strong>কারণ: ${esc(wn[0].detail || wn[0].code)}</div>`;
     if ((cur.cand.warnings || []).some((x) => x && x.code === 'bank_low')) html += `<div class="notice warn"><strong>এই level-এর unused item কমে এসেছে।</strong>অন্য level বা learning mode বেছে নিন। ব্যবহৃত item আবার দেখানো হবে না।</div>`;
-    if ((cur.cand.warnings || []).some((x) => x && x.code === 'vision_unavailable')) html += `<div class="notice warn"><strong>ছবি যাচাই করা যায়নি।</strong>ছবি নিজে দেখে বাছুন।</div>`;
+    if ((cur.cand.warnings || []).some((x) => x && x.code === 'vision_unavailable')) html += `<div class="notice warn"><strong>ছবি AI দিয়ে যাচাই করা হয়নি।</strong>Automatic mode-এ ছবি নিজে দেখে যাচাই করুন। প্রয়োজন হলে Home থেকে Manual review চালু করে আবার Prepare করুন।</div>`;
     html += `<div class="card"><h2>${esc(sessionTitle(s))}</h2>
       <p class="muted">${esc(MODE_BN[cur.cand.mode] || MODE_BN.object)} · ${esc(cur.cand.level || 'Mixed')}</p>
       <p class="hint">১) ছবিতে ট্যাপ করে বাছুন। ২) তীর নিয়ে ভাবতে হবে না: না ট্যাপ করলে AI নিজেই ছবির গুরুত্বপূর্ণ অংশে তীর লাগবে কিনা ও কোথায় ঠিক করবে। চাইলে যে অংশটি দেখাতে চান সেখানে ট্যাপ করুন। ৩) চাইলে আঙুল টেনে ছবি সরান। (পাতা স্ক্রল করতে ছবির বাইরের ফাঁকা অংশে আঙুল রাখুন।)</p></div>`;

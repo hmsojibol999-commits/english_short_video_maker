@@ -81,6 +81,42 @@ class LearningBankTests(unittest.TestCase):
 
 
 class PrepareLearningFlowTests(unittest.TestCase):
+    def test_learning_mode_reports_when_no_vision_provider_is_configured(self):
+        photos = [
+            {"id": i, "thumb": "https://example.test/thumb.jpg",
+             "large": "https://example.test/large.jpg", "w": 1200, "h": 800,
+             "photographer": "Test", "page_url": "https://example.test/photo"}
+            for i in range(10)
+        ]
+        with tempfile.TemporaryDirectory() as d, \
+                mock.patch.object(prepare.llm, "available", return_value=False), \
+                mock.patch.object(prepare.Pixabay, "candidates", return_value=photos):
+            cand = prepare.build_candidates(C.Settings(), State(d), "sid-action-no-vision-01", None,
+                                            False, mode="action", level="A1")
+        self.assertIn("vision_unavailable", {w["code"] for w in cand["warnings"]})
+
+    def test_learning_mode_preserves_warnings_created_by_vision_filter(self):
+        photos = [
+            {"id": i, "thumb": "https://example.test/thumb.jpg",
+             "large": "https://example.test/large.jpg", "w": 1200, "h": 800,
+             "photographer": "Test", "page_url": "https://example.test/photo"}
+            for i in range(10)
+        ]
+
+        def unavailable_filter(settings, target, candidates, keep, warnings):
+            if not any(w.get("code") == "vision_unavailable" for w in warnings):
+                warnings.append({"code": "vision_unavailable", "stage": "vision",
+                                 "detail": "vision provider did not answer; photos were not verified"})
+            return candidates[:keep]
+
+        with tempfile.TemporaryDirectory() as d, \
+                mock.patch.object(prepare.llm, "available", return_value=True), \
+                mock.patch.object(prepare.Pixabay, "candidates", return_value=photos), \
+                mock.patch.object(prepare, "vision_filter", side_effect=unavailable_filter):
+            cand = prepare.build_candidates(C.Settings(), State(d), "sid-action-vision-fallback-01", None,
+                                            False, mode="action", level="A1")
+        self.assertIn("vision_unavailable", {w["code"] for w in cand["warnings"]})
+
     def test_every_mode_builds_six_candidates_offline_with_pixabay_mock(self):
         with tempfile.TemporaryDirectory() as d:
             state = State(d)

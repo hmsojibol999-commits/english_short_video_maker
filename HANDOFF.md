@@ -2,7 +2,7 @@
 
 ## Project state
 
-This is an update to the existing WordClip Studio codebase. Existing rendering, Pixabay integration, vision checks, TTS fallback, release publishing, settings and manual photo tools are retained. This handoff describes the source in this ZIP; no GitHub push or deployment is included.
+This updates the existing WordClip Studio codebase; it does not create a separate application. The update is pushed to branch `work/learning-modes-auto-images` and proposed in Pull Request #1. It has not yet been merged into `main` or deployed to the live GitHub Pages app. Existing rendering, Pixabay integration, vision checks, TTS fallback, release publishing, settings and manual photo tools are retained.
 
 ## Product behavior
 
@@ -62,6 +62,7 @@ Both workflow copies (`.github/workflows/prepare.yml` and `github-workflows/prep
 - Added `tests/test_learning_modes.py`.
 - Updated `engine/prepare.py`, `engine/build.py`, `engine/render.py`, `engine/draw.py`, `engine/config.py`, `engine/pixabay.py`, `engine/vision.py`, `engine/timeline.py`, `engine/errors.py`.
 - Updated `docs/app.js`, `docs/core.js`, workflows, tests and `config.yaml`.
+- Added `.github/workflows/ci.yml` to run Python tests and JavaScript checks on PRs and feature-branch pushes.
 - Added `README.md`, `.env.example` and this file.
 
 ## Local checks run
@@ -81,7 +82,7 @@ python -m unittest discover -s tests -p 'test_engine.py' -k PixabayTests -v
 node --test tests/test_core.js
 ```
 
-A real Pixabay search, actual Cloudflare/Groq/edge-tts calls, live GitHub Actions and a published Release were not executed in this environment. The full `test_engine.py` module did not complete within the available execution window; its focused timeline, Pixabay, prepare, word-bank, geometry, selection, audio, voice, state, and provider test groups were run individually. A full three-item MP4 render was not completed in this environment, so successful production video output still needs an Actions run with the project secrets.
+Local verification on the user's Android/Termux environment (Python 3.13) completed successfully: the full test suite reported 181 tests passed; `python -m py_compile engine/*.py`, `node --check docs/app.js`, `node --check docs/core.js`, and `git diff --check` also passed. The added GitHub Actions CI workflow repeats the automated checks on the pull request. A real Pixabay search, actual Cloudflare/Groq/edge-tts calls, a live Prepare/Build Actions run, and a published three-item MP4 Release have not yet been verified; those are the remaining end-to-end checks after merge and deployment.
 
 ## Known limitations / follow-up review
 

@@ -229,6 +229,14 @@ def build_learning_candidates(settings, state: State, sid: str, category: str | 
     want_pool = VISION_POOL if use_vision else PHOTOS_PER_WORD
     min_photos = MIN_PHOTOS if use_vision else PHOTOS_PER_WORD
     out, tried, dropped = [], set(), []
+    warnings = []
+    vision_requested = bool(getattr(settings, "vision_check", True)) and not mock
+    if vision_requested and not use_vision:
+        warnings.append({
+            "code": "vision_unavailable",
+            "stage": "vision",
+            "detail": "no vision provider credentials are configured; Pixabay results were not AI-verified",
+        })
     while queue and len(out) < total and len(tried) < MAX_TRIED:
         it = queue.pop(0)
         if it["id"] in tried:
@@ -240,7 +248,7 @@ def build_learning_candidates(settings, state: State, sid: str, category: str | 
             if use_vision and len(photos) < MIN_POOL:
                 dropped.append(it["word"]); continue
             if use_vision and len(photos) >= min_photos:
-                photos = vision_filter(settings, target, photos, PHOTOS_PER_WORD, [])
+                photos = vision_filter(settings, target, photos, PHOTOS_PER_WORD, warnings)
         except E.WCError as ex:
             if ex.code in (E.PIXABAY_NO_KEY, E.PIXABAY_RATE):
                 raise
@@ -255,7 +263,6 @@ def build_learning_candidates(settings, state: State, sid: str, category: str | 
                         f"found {len(out)}, need {min(settings.words_per_video, total)}. "
                         f"{len(dropped)} skipped because suitable Pixabay photos were unavailable.",
                         "prepare")
-    warnings = []
     if len(queue) < 10:
         warnings.append({"code": "bank_low", "stage": "bank",
                          "detail": f"{len(queue)} more unused {mode} items remain in this level"})
