@@ -40,10 +40,11 @@ class CountdownTests(unittest.TestCase):
         s = tl3().words[0]
         self.assertAlmostEqual(s.cd_end - s.cd_start, 3.0)
 
-    def test_three_ticks_per_word_and_chime_replaces_ding(self):
+    def test_three_ticks_per_word_and_answer_reveal_is_silent(self):
         ev = T.audio_events(tl3())
         self.assertEqual(sum(1 for _, k, n in ev if n == "tick"), 9)
-        self.assertEqual(sum(1 for _, k, n in ev if n == "chime"), 3)
+        self.assertEqual(sum(1 for _, k, n in ev if n == "chime"), 0)
+        self.assertEqual(sum(1 for _, k, n in ev if n == "sparkle"), 0)
         self.assertEqual(sum(1 for _, k, n in ev if n == "ding"), 0)
 
     def test_clock_gone_before_label_appears(self):

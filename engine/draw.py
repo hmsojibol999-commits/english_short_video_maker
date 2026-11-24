@@ -183,9 +183,9 @@ def build_halftone(theme: dict) -> Image.Image:
 
 
 # ------------------------------------------------------------------ title
-def build_title(theme: dict) -> Image.Image:
-    """'WHAT'S THIS CALLED?' with a chunky extruded look. Returns 1x RGBA."""
-    text = "WHAT\u2019S THIS CALLED?"
+def build_title(theme: dict, text: str = "WHAT\u2019S THIS CALLED?") -> Image.Image:
+    """Mode-specific learning question with the existing chunky title style."""
+    text = str(text or "WHAT\u2019S THIS CALLED?").upper()
     max_w = 2 * C.SAFE_HALF_W - 40
     size = fit_size(text, "bold", max_w - 50, 86)
     f = get_font("bold", size * SS)
@@ -336,24 +336,71 @@ def draw_ring(theme: dict, sweep: float, number: int, pop: float = 1.0) -> Image
 
 
 # ----------------------------------------------------------------- label
-def build_label(theme: dict, word: str) -> Image.Image:
-    """Answer label sprite at SS x. Width capped so the 1.08 pop stays safe."""
-    max_label_w = int(2 * C.SAFE_HALF_W / C.LABEL_POP_MAX) - 8     # ~770
-    pad_x = 50
-    text = word.title()
-    size = fit_size(text, "bold", max_label_w - 2 * pad_x, 118)
-    f = get_font("bold", size * SS)
-    l, t, r, b = f.getbbox(text)
-    tw, th = (r - l), (b - t)
-    w = max(420 * SS, tw + 2 * pad_x * SS)
-    h = 134 * SS
+def _wrap_pixels(text: str, font, max_width: int) -> list[str]:
+    words = str(text or "").split() or [""]
+    lines, line = [], ""
+    for token in words:
+        trial = token if not line else line + " " + token
+        if line and font.getlength(trial) > max_width:
+            lines.append(line)
+            line = token
+        else:
+            line = trial
+    if line:
+        lines.append(line)
+    return lines
+
+
+def build_label(theme: dict, word: str, subtitle: str | None = None) -> Image.Image:
+    """Fit a one/two-line answer and optional short definition into the answer card."""
+    max_label_w = int(2 * C.SAFE_HALF_W / C.LABEL_POP_MAX) - 32
+    max_text_w = max_label_w - 60
+    text = str(word or "").strip()
+    if text:
+        text = text[0].upper() + text[1:]
+    main_size = 70 if len(text) <= 22 else 52
+    main_size = min(main_size, 72)
+    main_font = None
+    main_lines = []
+    while main_size >= 36:
+        main_font = get_font("bold", main_size * SS)
+        main_lines = _wrap_pixels(text, main_font, max_text_w * SS)
+        if len(main_lines) <= 2:
+            break
+        main_size -= 2
+    main_font = main_font or get_font("bold", 36 * SS)
+    main_bbox = main_font.getbbox("Ag")
+    main_line_h = max(1, main_bbox[3] - main_bbox[1])
+    main_spacing = int(main_size * 0.08 * SS)
+    main_h = len(main_lines) * main_line_h + max(0, len(main_lines) - 1) * main_spacing
+
+    sub = str(subtitle or "").strip()
+    sub_font = None
+    sub_w = sub_h = sub_spacing = 0
+    if sub:
+        sub_size = fit_size(sub, "med", max_text_w * SS, 25 * SS, min_size=16 * SS)
+        sub_font = get_font("med", sub_size)
+        box = sub_font.getbbox(sub)
+        sub_w, sub_h = box[2] - box[0], box[3] - box[1]
+        sub_spacing = 7 * SS
+
+    content_h = main_h + (sub_spacing + sub_h if sub else 0)
+    pad_y = 16 * SS
+    card_h = max(116 * SS, content_h + pad_y * 2)
+    card_w = max(420 * SS, max((main_font.getlength(line) for line in main_lines), default=0) + 52 * SS, sub_w + 52 * SS)
+    card_w = min(card_w, max_label_w * SS)
     margin = 10 * SS
-    im = Image.new("RGBA", (w + 2 * margin, h + 2 * margin), (0, 0, 0, 0))
+    im = Image.new("RGBA", (int(card_w + 2 * margin), int(card_h + 2 * margin)), (0, 0, 0, 0))
     d = ImageDraw.Draw(im)
-    d.rounded_rectangle((margin, margin, margin + w, margin + h), 24 * SS,
+    d.rounded_rectangle((margin, margin, margin + card_w, margin + card_h), 24 * SS,
                         fill=rgba(theme["label_bg"]), outline=rgba(theme["ink"]), width=5 * SS)
-    d.text((margin + (w - tw) / 2 - l, margin + (h - th) / 2 - t), text, font=f,
-           fill=rgba(theme["label_fg"]))
+    y = margin + (card_h - content_h) / 2
+    d.multiline_text((im.width / 2, y), "\n".join(main_lines), font=main_font,
+                     fill=rgba(theme["label_fg"]), anchor="ma", align="center", spacing=main_spacing)
+    if sub and sub_font is not None:
+        y += main_h + sub_spacing
+        d.text((im.width / 2, y), sub, font=sub_font, fill=rgba(theme["label_fg"]),
+               anchor="ma", align="center")
     return im
 
 

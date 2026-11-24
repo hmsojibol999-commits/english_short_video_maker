@@ -11,12 +11,21 @@
 | `channel_handle` | সোশ্যাল আইকনের নিচে ঐচ্ছিক লেখা (ফাঁকা = কিছু দেখাবে না) | ফাঁকা |
 | `vision_check` | Prepare-এ না-মেলা ছবি বাদ দেয় | `true` |
 | `vision_gate` | Build-এ বাছা ছবি স্পষ্ট ভুল হলে থামায় | `true` |
+| `allow_ai_word_generation` | Object mode-এ পুরোনো AI word generator fallback হিসেবে চালু করে; built-in mode bank ডিফল্ট source | `false` |
 | `words_per_video` | এক ভিডিওতে শব্দ-সংখ্যা | `3` |
 | `theme` | `auto`, `yellow`, `blue`, `green`, `purple`, `orange`, `teal` | `auto` |
 | `edge_voice_question` / `edge_voice_answer` | ভয়েস (বিনামূল্যের edge-tts) | `en-US-AvaNeural` (দুটোই) |
 | `edge_rate` / `edge_rate_long` | ভয়েসের গতি (আরও ধীর: `-20%`) | `-10%` / `-16%` |
 | `music_volume_lufs` | মিউজিকের জোর | `-26` |
 | `duck_db` | কথার সময় মিউজিক কতটা কমবে | `-8` |
+
+## Learning Mode ও শব্দের উৎস
+
+Home থেকে Object Learning, Action Learning, Useful Vocabulary বা Everyday Phrases বেছে নিন। English level হিসেবে Mixed, A1, A2 বা B1 নেওয়া যায়। প্রতিটি mode-এর item list আলাদা। সফল Build-এর পরে item ID ওই mode-এর history-তে জমা হয়, তাই একই mode-এ পুনরায় আসে না।
+
+শব্দের default source হলো `engine/learning_bank.py`-এর built-in bank। পুরোনো AI word-generation code মুছে ফেলা হয়নি, কিন্তু `allow_ai_word_generation: false` থাকায় সাধারণত চালু হবে না। AI generation চালু করলে সেটি শুধু Object Learning-এর legacy fallback হিসেবে কাজ করে। Photo validation ও arrow placement-এর Vision AI এই setting থেকে আলাদা।
+
+ভিডিও automatic বানানোই default। Home-এ **Manual review** চালু করলে ছবি নিজেরা বেছে নিতে পারবেন। Action/Vocabulary/Phrases-এর জন্য Object topic filter প্রযোজ্য নয়।
 
 ## ভয়েস বদলানো
 

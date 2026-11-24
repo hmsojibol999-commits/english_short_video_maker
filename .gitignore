@@ -4,3 +4,6 @@ out/
 state/
 voice-out/
 .DS_Store
+.env
+.env.*
+!.env.example

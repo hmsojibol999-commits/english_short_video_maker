@@ -7,9 +7,17 @@ on:
         description: "Session id (made by the web app)"
         required: true
       category:
-        description: "Optional category, e.g. kitchen"
+        description: "Optional topic filter"
         required: false
         default: ""
+      mode:
+        description: "object, action, vocabulary, or phrases"
+        required: false
+        default: "object"
+      level:
+        description: "mixed, A1, A2, or B1"
+        required: false
+        default: "mixed"
       refill:
         description: "true = add fresh words to an existing session (used by the Skip button)"
         required: false
@@ -44,6 +52,8 @@ jobs:
       PYTHONUNBUFFERED: "1"
       SESSION: ${{ inputs.session_id }}
       CATEGORY: ${{ inputs.category }}
+      MODE: ${{ inputs.mode }}
+      LEVEL: ${{ inputs.level }}
       REFILL: ${{ inputs.refill }}
       EXCLUDE: ${{ inputs.exclude }}
     steps:
@@ -59,5 +69,5 @@ jobs:
           if [ "$REFILL" = "true" ]; then
             python -m engine.prepare --session "$SESSION" --category "$CATEGORY" --refill --exclude "$EXCLUDE"
           else
-            python -m engine.prepare --session "$SESSION" --category "$CATEGORY"
+            python -m engine.prepare --session "$SESSION" --category "$CATEGORY" --mode "$MODE" --level "$LEVEL"
           fi

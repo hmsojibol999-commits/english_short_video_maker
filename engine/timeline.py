@@ -127,7 +127,8 @@ def audio_events(tl: Timeline) -> list:
     """(absolute_time, kind, key) for everything that must be heard.
 
     kind 'voice' keys: hook, q<i>, a<i>, s<i>, outro
-    kind 'sfx' keys: whoosh, tick, chime, pop, key, sparkle
+    kind 'sfx' keys: whoosh, tick, pop, key. The answer reveal is intentionally
+    silent so the first pronunciation stays clear.
     """
     ev = [(0.15, "voice", "hook"), (0.05, "sfx", "pop")]
     for i in range(3):
@@ -138,8 +139,6 @@ def audio_events(tl: Timeline) -> list:
         ev.append((s + seg.q_start, "voice", f"q{seg.index}"))
         for k in range(len(countdown_numbers())):
             ev.append((s + seg.cd_start + k * 1.0, "sfx", "tick"))
-        ev.append((s + seg.reveal + C.LABEL_DELAY, "sfx", "chime"))
-        ev.append((s + seg.reveal + C.LABEL_DELAY + 0.06, "sfx", "sparkle"))
         ev.append((s + seg.a_start, "voice", f"a{seg.index}"))
         ev.append((s + seg.slow_start, "voice", f"s{seg.index}"))
         for k in range(seg.letters):

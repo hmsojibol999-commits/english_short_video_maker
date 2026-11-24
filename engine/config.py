@@ -159,6 +159,7 @@ class Settings:
     vision_check: bool = True         # drop photos that do not show the word
     auto_arrow: bool = True           # AI decides where an arrow is needed when you did not tap one
     vision_gate: bool = True          # build fails if a chosen photo clearly is not the word
+    allow_ai_word_generation: bool = False  # offline-first learning bank; legacy AI path stays available
     edge_rate: str = "-10%"           # edge-tts speed for normal lines (more negative = slower)
     edge_rate_long: str = "-16%"      # edge-tts speed for long lines such as the outro
     edge_voice_question: str = "en-US-AvaNeural"

@@ -18,9 +18,9 @@ disables buttons while something runs.
 
 | file | inputs | does |
 |---|---|---|
-| `prepare.yml` | `session_id`, `category` | 6 words (3 + 3 spares) via Groq (fallback WordNet/built-in), Pixabay search, writes `sessions/<id>/candidates.json` + `status.json` |
+| `prepare.yml` | `session_id`, `category`, `mode`, `level`, `refill`, `exclude` | six mode-specific learning items (3 + 3 spares), Pixabay search and optional vision filtering; writes candidates + status |
 | `more_images.yml` | `session_id`, `word` | next Pixabay page for one word, appends 4 photos |
-| `build.yml` | `session_id`, `selection` | render, quality gates, Release `video-YYYYMMDD-HHMMSS`, then `used_words.txt` |
+| `build.yml` | `session_id`, `selection` | render, mode-aware quality gates, Release `video-YYYYMMDD-HHMMSS`, then per-mode used item IDs |
 | `check_setup.yml` | none | secrets, Groq model list (prints `orpheus` ones), Groq TTS, Pixabay, edge-tts, ffmpeg, fonts -> `reports/check_setup.json` |
 | `voice_test.yml` | none | 3 female + 3 male Groq voices + 2 edge voices -> Release `voice-test-*`, `reports/voice_test.json` |
 
@@ -29,13 +29,15 @@ disables buttons while something runs.
 ## `state` branch (created automatically)
 
 ```
-used_words.txt  bad_words.txt            plain lists, one word per line
+used_words.txt  bad_words.txt            legacy Object Learning history
+used_items/<mode>.txt                    stable item IDs, one list per mode
+bad_items/<mode>.txt                     skipped/banned item labels, one list per mode
+pixabay-cache/*.json                     Pixabay search-response metadata cache (24 h)
 audio-cache/                             only static phrases (hook, question, outro)
 reports/check_setup.json  voice_test.json
 sessions/<id>/candidates.json status.json more_status.json build.json uploads/*.jpg
 ```
-Only the last 10 sessions are kept. `used_words.txt` is appended only after the Release exists.
-Skipped words go to `bad_words.txt` after a successful build (`x` field of the selection).
+Only the last 10 sessions are kept. Used item IDs are appended only after the video has passed quality checks and the Release has been published (when Release publishing is enabled). Skipped items are written to `bad_items/<mode>.txt` after a successful build. Object mode also maintains the legacy word lists for compatibility.
 
 ## Selection JSON (UI -> build.yml, well under 60k chars)
 
@@ -53,11 +55,13 @@ Skipped words go to `bad_words.txt` after a successful build (`x` field of the s
 |---|---|
 | `config.py` | all layout/timing constants, 6 themes (contrast-checked), settings (`config.yaml` + env Variables) |
 | `geometry.py` | cover crop, Ken Burns box (zoom about the focus), arrow placement (always inside the safe zone), upscale check. Mirrored in `docs/core.js` (parity-tested) |
-| `timeline.py` | timeline from REAL clip durations, snapped to whole frames; audio event list |
-| `words.py`, `pixabay.py` | word generation/dedupe/fallbacks; Pixabay search, photo filtering (stepwise: how much the downloadable image must be enlarged to cover the card), scoring on the tags, fresh links by id |
+| `timeline.py` | timeline from real question/answer/slow-pronunciation clip durations, snapped to whole frames; audio event list (answer reveal is silent) |
+| `learning_bank.py` | curated Object, Action, Useful Vocabulary and Everyday Phrase items with stable IDs, CEFR level, question/answer text and image targets |
+| `words.py`, `pixabay.py` | legacy AI word generation/validation; Pixabay search, 24 h metadata cache, photo filtering and ranking |
+
 | `tts.py` | Groq Orpheus (OpenAI-compatible endpoint) -> edge-tts fallback, cache by sha1(engine, model, voice, text), silence trim, normalise, 30 ms fades |
 | `sfx.py`, `audio.py` | numpy-synthesised SFX; mix, ducked optional music, two-pass loudnorm (-14 LUFS, TP -1.5 target) |
-| `draw.py`, `render.py` | Pillow sprites at 2x supersampling; frame renderer (float-box Lanczos zoom), multiprocessing -> raw RGB -> ffmpeg libx264 |
+| `draw.py`, `render.py` | mode-specific heading, multi-line answer label, subtitle and spelling; Pillow sprites at 2x supersampling; multiprocessing -> ffmpeg libx264 |
 | `quality.py` | ffprobe/loudness/duration/duplicate/asset gates; build fails loudly |
 | `state.py` | git-based state branch helper (works with any remote; tests use a local bare repo) |
 | `prepare.py`, `build.py`, `check_setup.py`, `voice_test.py` | workflow entry points (`python -m engine.<name>`; `--mock` where it applies) |
@@ -78,10 +82,11 @@ Errors carry stable codes (`engine/errors.py`) that the UI maps to Bengali messa
 ## Tests
 
 ```
-python -m unittest discover -s tests -v     # 83 tests: timeline, safe zones, dedupe, selection, geometry, state,
-                                            # prepare/build flows incl. failures, voice + HTTP paths with stubbed network
-node --test tests/test_core.js              # 12 tests: GitHub client with mocked fetch, JS<->Python parity
-python tests/ui_test.py                     # 46 checks: headless Chromium UI flow against a FAKE GitHub backend (needs playwright)
+python -m py_compile engine/*.py
+python -m unittest discover -s tests -p 'test_learning_modes.py' -v
+python -m unittest discover -s tests -p 'test_v6.py' -v
+node --test tests/test_core.js
+python -m unittest discover -s tests -v             # full regression suite
 python -m engine.build --session <sid> --selection @sel.json --mock --no-state --no-release --out out   # full mock render
 ```
 Not testable offline: real Groq / Pixabay / GitHub Actions / `gh release` / edge-tts / Pages hosting.
@@ -90,8 +95,17 @@ Not testable offline: real Groq / Pixabay / GitHub Actions / `gh release` / edge
 - The arrow is optional: a selection word without `f` renders without the arrow.
 - "Skip" has no limit: when the spare words run out the UI dispatches `prepare.yml` with `refill=true`, which appends new words to the session (`engine.prepare --refill`).
 - Photos are unique per word (by Pixabay id and by image link) in `pixabay.py` and in the UI grid.
-- Word list: curated uncommon words in `engine/words.py` (`BUILTIN_WORDS`) and the Groq prompt asks for uncommon, concrete words.
-- Word history: `used_words.txt` lives on the `state` branch; Prepare reads it before choosing words, Build appends and pushes it.
+- Legacy word list: `engine/words.py` / `engine/wordbank.py` remain for compatibility. The normal UI uses `engine/learning_bank.py` and does not call AI word generation by default.
+- Word history: mode-specific IDs live under `used_items/`; Object mode also reads/writes legacy `used_words.txt`.
 
 ## v6 notes
 - Layout/safe zone constants in `engine/config.py` (mirrored in `docs/core.js`). Clock 3-2-1 via `timeline.countdown_at`. Music: `engine/musicgen.py` (`python -m engine.musicgen`), mixed in `audio.build_mix` with voice polish, ducking and soft limiter. Word rules: `words.DENY_WORDS`, `SIMILAR_GROUPS`. Photo floor: `pixabay.MIN_SHORT_SIDE`.
+
+## Learning modes update
+
+- `learning_bank.py` serves four separate modes and A1/A2/B1/Mixed levels. The old AI word-generation path is retained but off by default (`allow_ai_word_generation: false`); opt-in applies only to legacy Object fallback.
+- The browser defaults to automatic photo selection and Build. Manual photo review remains optional.
+- `used_items/<mode>.txt` prevents repeats after successful builds; mode histories are independent.
+- Pixabay results are cached as metadata for at least 24 hours. No permanent image bank or bulk image download is maintained.
+- The answer-reveal chime and sparkle audio events were removed to keep the first pronunciation clear; visual sparkles and other SFX remain.
+- `HANDOFF.md` documents the new data shape, workflows, tests and remaining limitations.
