@@ -1,0 +1,3 @@
+action_run_in_a_park
+action_brush_teeth
+action_sit_on_a_chair
